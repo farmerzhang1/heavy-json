@@ -85,7 +85,8 @@ jnum : Rule Integer
 jnum = terminal (\x => case tok x of
                     NumInt n => Just n
                     _ => Nothing)
-
+-- MONAD!!
+-- single json object with one string key, one integer value
 single_object : Rule Json
 single_object = do
     left_curly
