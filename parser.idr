@@ -61,7 +61,7 @@ left_bracket = terminal (\x => case tok x of
 
 right_bracket : Rule Integer
 right_bracket = terminal (\x => case tok x of
-                            LeftBracket => Just 0
+                            RightBracket => Just 0
                             _ => Nothing)
 left_curly : Rule Integer
 left_curly = terminal (\x => case tok x of
@@ -80,31 +80,52 @@ comma : Rule Integer
 comma = terminal (\x => case tok x of
                         Comma => Just 0
                         _ => Nothing)
-jstring : Rule String
-jstring = terminal (\x => case tok x of
+string : Rule String
+string = terminal (\x => case tok x of
                         Str s => Just s
                         _ => Nothing)
-
-jnum : Rule Integer
+jstring : Rule Json
+jstring = terminal (\x => case tok x of
+                        Str s => Just $ JsonString s
+                        _ => Nothing)
+jnum : Rule Json
 jnum = terminal (\x => case tok x of
-                    NumInt n => Just n
+                    NumInt n => Just $ JsonNum n
                     _ => Nothing)
+jdouble : Rule Json
+jdouble = terminal (\x => case tok x of
+                        NumDouble d => Just $ JsonDouble d
+                        _ => Nothing)
+jbool : Rule Json
+jbool = terminal (\x => case tok x of
+                        Boolean b => Just $ JsonBool b
+                        _ => Nothing)
+
+json_array : Rule Json
+json_list : Rule Json
+json_values : Rule Json
+json_values = jstring <|> jnum <|> jdouble <|> jbool <|> json_array <|> json_list
 -- MONAD!!
--- single json object with one string key, one integer value
-private
+-- single json object with one string key, one json value
+-- "name" : some json values (string, bool, number, list)
 single_object : Rule (String, Json)
 single_object = do
-    s <- jstring
+    s <- string
     colon
-    n <- jnum
-    pure (s, JsonNum n)
+    val <- json_values
+    pure (s, val)
 
-json_list : Rule Json
 json_list = do
     left_curly
     jlist <- sepBy1 comma single_object
     right_curly
     pure (JsonObject jlist)
+
+json_array = do
+    left_bracket
+    jarray <- sepBy comma json_values
+    right_bracket
+    pure (JsonList jarray)
 
 test : String -> Either (ParseError (TokenData Token))
     (Json, List (TokenData Token))
