@@ -53,7 +53,7 @@ json_object = json_string : json_values (, json_string : json_values )****
 json_values = listof json_values | Integer | double | bool | string | json_object
 -}
 
-
+-- this is too verbose, can I simplify it?
 left_bracket : Rule Integer
 left_bracket = terminal (\x => case tok x of
                             LeftBracket => Just 0
@@ -76,6 +76,10 @@ colon : Rule Integer
 colon = terminal (\x => case tok x of
                         Colon => Just 0
                         _ => Nothing)
+comma : Rule Integer
+comma = terminal (\x => case tok x of
+                        Comma => Just 0
+                        _ => Nothing)
 jstring : Rule String
 jstring = terminal (\x => case tok x of
                         Str s => Just s
@@ -87,15 +91,21 @@ jnum = terminal (\x => case tok x of
                     _ => Nothing)
 -- MONAD!!
 -- single json object with one string key, one integer value
-single_object : Rule Json
+private
+single_object : Rule (String, Json)
 single_object = do
-    left_curly
     s <- jstring
     colon
     n <- jnum
+    pure (s, JsonNum n)
+
+json_list : Rule Json
+json_list = do
+    left_curly
+    jlist <- sepBy1 comma single_object
     right_curly
-    pure (JsonObject [(s, JsonNum n)])
+    pure (JsonObject jlist)
 
 test : String -> Either (ParseError (TokenData Token))
     (Json, List (TokenData Token))
-test s = parse single_object (fst (lex toks s))
+test s = parse json_list (fst (lex toks s))
