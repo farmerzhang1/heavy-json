@@ -23,7 +23,7 @@ data Json = JsonNum Integer
             | JsonList (List Json)
             | JsonObject (List (String, Json))
 -- actually we can do lexical analysis and parsing together, but, to get acquintances with idris Lexer/Parse library...
-data Token = LeftCurly | RightCurly | LeftBracket | RightBracket | Colon | Comma
+data Token = LeftCurly | RightCurly | LeftBracket | RightBracket | Colon | Comma | Comment String
             | Str String | Boolean Bool | NumInt Integer | NumDouble Double
 
 -- haven't learned how to process whitespaces
@@ -40,9 +40,16 @@ toks =
         (is '{', \x => LeftCurly),
         (is '}', \x => RightCurly),
         (is ',', \x => Comma),
-        (is ':', \x => Colon)
+        (is ':', \x => Colon),
+        (spaces, Comment)
     ]
 
+processWhitespace : (List (TokenData Token), Int, Int, String) -> (List (TokenData Token), Int, Int, String)
+processWhitespace (x,l,c,s) = ((filter notComment x),l,c,s) where
+    notComment : TokenData Token -> Bool
+    notComment t = case tok t of
+                        Comment _ => False
+                        _ => True
 
 Rule : Type -> Type
 Rule ty = Grammar (TokenData Token) True ty
@@ -129,4 +136,4 @@ json_array = do
 
 test : String -> Either (ParseError (TokenData Token))
     (Json, List (TokenData Token))
-test s = parse json_list (fst (lex toks s))
+test s = parse json_list (fst (processWhitespace $ lex toks s))
